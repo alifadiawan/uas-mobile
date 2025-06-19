@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_uas/Notes/InsertNotes.dart'; // Import is no longer needed here but left for context
 import 'package:mobile_uas/Notes/NotesIndex.dart';
 import 'package:mobile_uas/Category/CategoryIndex.dart';
 import 'package:mobile_uas/Calender/CalenderIndex.dart';
@@ -7,69 +8,54 @@ import 'package:mobile_uas/Settings.dart';
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
 
-  const CustomBottomNavBar({
-    Key? key,
-    required this.currentIndex,
-  }) : super(key: key);
+  const CustomBottomNavBar({Key? key, required this.currentIndex})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
-            spreadRadius: 0,
-            blurRadius: 10,
-            offset: Offset(0, -2),
+    // A regular, flat BottomAppBar
+    return BottomAppBar(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.background,
+      surfaceTintColor: Theme.of(context).colorScheme.background,
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade300, width: 1.0),
           ),
-        ],
-        color: colorScheme.surface,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16.0,
-          vertical: 12.0,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavItem(
               context,
-              Icons.home_rounded,
-              'Home',
-              currentIndex == 0,
-              () => _navigateToPage(context, NotesIndex()),
-              theme,
+              Icons.description_outlined,
+              'Notes',
+              0,
+              () => _navigateToPage(context, const NotesIndex()),
             ),
             _buildNavItem(
               context,
-              Icons.folder_rounded,
+              Icons.folder_outlined,
               'Category',
-              currentIndex == 1,
-              () => _navigateToPage(context, Categoryindex()),
-              theme,
+              1,
+              () => _navigateToPage(context, const Categoryindex()),
             ),
-            SizedBox(width: 60),
+            // The central "Add" button has been removed from here.
             _buildNavItem(
               context,
-              Icons.calendar_today_rounded,
+              Icons.calendar_today_outlined,
               'Calendar',
-              currentIndex == 2,
-              () => _navigateToPage(context, Calenderindex()),
-              theme,
+              2,
+              () => _navigateToPage(context, const Calenderindex()),
             ),
             _buildNavItem(
               context,
-              Icons.settings_rounded,
+              Icons.settings_outlined,
               'Settings',
-              currentIndex == 3,
-              () => _navigateToPage(context, Settings()),
-              theme,
+              3,
+              () => _navigateToPage(context, const Settings()),
             ),
           ],
         ),
@@ -77,46 +63,63 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
-  void _navigateToPage(BuildContext context, Widget page) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
-  }
-
+  /// Builds the standard navigation items
   Widget _buildNavItem(
     BuildContext context,
     IconData icon,
     String label,
-    bool isSelected,
+    int itemIndex,
     VoidCallback onTap,
-    ThemeData theme,
   ) {
-    final colorScheme = theme.colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 24,
-            color: isSelected
-                ? colorScheme.primary
-                : theme.iconTheme.color?.withOpacity(0.5),
-          ),
-          SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: isSelected
-                  ? colorScheme.primary
-                  : theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    final bool isSelected = currentIndex == itemIndex;
+    final theme = Theme.of(context);
+    final color = isSelected ? Colors.grey.shade800 : Colors.grey.shade500;
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    final finalColor =
+        isDarkMode
+            ? isSelected
+                ? theme.colorScheme.primary
+                : Colors.grey.shade500
+            : color;
+
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: finalColor, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: finalColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Navigation logic (no changes needed here)
+  void _navigateToPage(BuildContext context, Widget page) {
+    if (ModalRoute.of(context)?.settings.name == page.runtimeType.toString())
+      return;
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+        settings: RouteSettings(name: page.runtimeType.toString()),
       ),
     );
   }

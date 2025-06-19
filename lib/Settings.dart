@@ -26,9 +26,7 @@ class _SettingsState extends State<Settings> {
   Future<void> _handleLogout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-
       if (mounted) {
-        // Navigate to the login screen and remove all previous routes
         Navigator.of(
           context,
         ).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -52,6 +50,9 @@ class _SettingsState extends State<Settings> {
       context: context,
       builder:
           (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text('Confirm Logout'),
             content: const Text('Are you sure you want to log out?'),
             actions: [
@@ -63,7 +64,10 @@ class _SettingsState extends State<Settings> {
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(
                   'Logout',
-                  style: TextStyle(color: theme.colorScheme.error),
+                  style: TextStyle(
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -84,7 +88,12 @@ class _SettingsState extends State<Settings> {
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(
+          'Settings',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: theme.colorScheme.background,
         elevation: 0,
       ),
@@ -104,29 +113,29 @@ class _SettingsState extends State<Settings> {
           ),
         ],
       ),
+      // This page doesn't have a FAB, so the setup is simpler.
       bottomNavigationBar: CustomBottomNavBar(currentIndex: 3),
     );
   }
 
   /// Builds the header section displaying user's avatar and email.
   Widget _buildUserProfileHeader(User user, ThemeData theme) {
-    // Helper to generate initials from the user's email
     String getInitials(String email) {
       if (email.isEmpty) return '??';
       return email.substring(0, 2).toUpperCase();
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.symmetric(vertical: 24.0),
       child: Column(
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: theme.colorScheme.primary,
+            backgroundColor: theme.colorScheme.primaryContainer,
             child: Text(
               getInitials(user.email ?? ''),
               style: theme.textTheme.headlineSmall?.copyWith(
-                color: theme.colorScheme.onPrimary,
+                color: theme.colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -143,7 +152,7 @@ class _SettingsState extends State<Settings> {
     );
   }
 
-  /// A reusable widget to group settings under a common title.
+  /// A reusable widget to group settings using our established modern theme.
   Widget _buildSettingsGroup(
     BuildContext context, {
     required String title,
@@ -154,24 +163,39 @@ class _SettingsState extends State<Settings> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 16.0, bottom: 8.0),
+          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
           child: Text(
             title.toUpperCase(),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.primary,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: Colors.grey.shade600,
               fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+              letterSpacing: 1.1,
             ),
           ),
         ),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        // Replaced Card with our consistent border-style Container
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(16),
           ),
-          clipBehavior:
-              Clip.antiAlias, // Ensures the ListTile background is clipped
-          child: Column(children: children),
+          child: Column(
+            // Add dividers between items manually
+            children: List.generate(
+              children.length * 2 - 1,
+              (index) {
+                if (index.isEven) {
+                  return children[index ~/ 2];
+                } else {
+                  return Divider(
+                    height: 1,
+                    indent: 56, // Indent to align with ListTile content
+                    color: Colors.grey.shade200,
+                  );
+                }
+              },
+            ),
+          ),
         ),
         const SizedBox(height: 24),
       ],
@@ -181,17 +205,22 @@ class _SettingsState extends State<Settings> {
   /// Builds the ListTile for toggling dark mode.
   Widget _buildDarkModeTile(ThemeProvider themeProvider, ThemeData theme) {
     return ListTile(
+      onTap: () => themeProvider.toggleTheme(),
       leading: Icon(
         themeProvider.isDarkMode
             ? Icons.dark_mode_outlined
             : Icons.light_mode_outlined,
-        color: theme.colorScheme.primary,
+        color: theme.textTheme.bodyMedium?.color,
       ),
       title: const Text('Dark Mode'),
       trailing: Switch(
         value: themeProvider.isDarkMode,
         onChanged: (value) => themeProvider.toggleTheme(),
         activeColor: theme.colorScheme.primary,
+        // Make the track color more subtle to fit the theme
+        activeTrackColor: theme.colorScheme.primary.withOpacity(0.5),
+        inactiveThumbColor: Colors.grey.shade400,
+        inactiveTrackColor: Colors.grey.shade200,
       ),
     );
   }

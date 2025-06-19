@@ -30,31 +30,38 @@ class _InsertNotesState extends State<InsertNotes> {
     try {
       final data = await supabase.from('category').select();
 
-      print('Loaded categories: $data');
+      // Check if widget is still mounted before updating state
+      if (!mounted) return;
 
       setState(() {
         _categories = List<Map<String, dynamic>>.from(data);
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load categories: $e')));
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load categories: $e')),
+      );
     }
   }
 
   Future<void> insertNote() async {
     final user = supabase.auth.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
       return;
     }
 
     if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a category')));
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a category')),
+      );
       return;
     }
 
@@ -66,15 +73,19 @@ class _InsertNotesState extends State<InsertNotes> {
         'category_id': _selectedCategoryId,
       });
 
+      if (!mounted) return;
+
       // Navigate back to NotesIndex and refresh it
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const NotesIndex()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Insert failed: $e')));
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Insert failed: $e')),
+      );
     }
   }
 

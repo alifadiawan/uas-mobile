@@ -4,6 +4,7 @@ import 'package:mobile_uas/Auth/RegisterScreen.dart';
 import 'package:mobile_uas/Notes/NotesIndex.dart';
 import 'package:mobile_uas/Calender/CalenderIndex.dart';
 import 'package:mobile_uas/Settings.dart';
+import 'package:mobile_uas/SplashScreen.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_uas/Notes/EditNote.dart'; // Adjust the import path
@@ -41,7 +42,8 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
         '/home': (context) => const NotesIndex(),
         '/signup': (context) => const RegisterScreen(),
         '/edit_note': (context) {
