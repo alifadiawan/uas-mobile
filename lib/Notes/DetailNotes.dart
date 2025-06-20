@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_uas/Notes/EditNote.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Detailnotes extends StatefulWidget {
@@ -13,7 +14,7 @@ class Detailnotes extends StatefulWidget {
 
 class _DetailnotesState extends State<Detailnotes> {
   // Store the future in a state variable to avoid re-fetching on every build
-  late final Future<Map<String, dynamic>> _noteFuture;
+  late Future<Map<String, dynamic>> _noteFuture;
 
   @override
   void initState() {
@@ -138,9 +139,19 @@ class _DetailnotesState extends State<Detailnotes> {
       actions: [
         IconButton(
           icon: const Icon(Icons.edit_outlined),
-          onPressed: () {
-            // TODO: Implement navigation to an Edit Note page
-            // You can pass the noteId and refresh upon return
+          onPressed: () async {
+            // Navigate to EditNote and refresh if edited
+            final updated = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EditNote(noteId: widget.noteId),
+              ),
+            );
+            if (updated == true) {
+              setState(() {
+                _noteFuture = _getNoteDetails();
+              });
+            }
           },
         ),
         IconButton(

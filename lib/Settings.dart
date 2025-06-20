@@ -118,11 +118,26 @@ class _SettingsState extends State<Settings> {
     );
   }
 
-  /// Builds the header section displaying user's avatar and email.
+  /// Builds the header section displaying user's avatar and name.
   Widget _buildUserProfileHeader(User user, ThemeData theme) {
-    String getInitials(String email) {
-      if (email.isEmpty) return '??';
-      return email.substring(0, 2).toUpperCase();
+    // Try to get the user's name from user.userMetadata, fallback to email if not available
+    String displayName = user.userMetadata?['name'] ??
+        user.userMetadata?['full_name'] ??
+        user.userMetadata?['username'] ??
+        user.email ??
+        'No name';
+
+    // Try to get the user's profile image from Google or other providers
+    String? photoUrl = user.userMetadata?['avatar_url'] ??
+        user.userMetadata?['picture'];
+
+    String getInitials(String name) {
+      if (name.isEmpty) return '??';
+      List<String> parts = name.trim().split(' ');
+      if (parts.length == 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+      }
+      return (parts[0][0] + parts.last[0]).toUpperCase();
     }
 
     return Padding(
@@ -132,17 +147,22 @@ class _SettingsState extends State<Settings> {
           CircleAvatar(
             radius: 40,
             backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              getInitials(user.email ?? ''),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                ? NetworkImage(photoUrl)
+                : null,
+            child: (photoUrl == null || photoUrl.isEmpty)
+                ? Text(
+                    getInitials(displayName),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
           Text(
-            user.email ?? 'No email associated',
+            displayName,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),

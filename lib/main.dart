@@ -34,13 +34,12 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'Supabase Login Demo',
       theme: ThemeData(
         brightness:
             themeProvider.isDarkMode ? Brightness.dark : Brightness.light,
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/',
+      initialRoute: '/',  
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),

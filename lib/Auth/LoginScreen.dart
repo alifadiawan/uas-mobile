@@ -275,16 +275,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Column(
       children: [
-        TextButton(
-          onPressed: () {},
-          child: Text(
-            'Need help signing in?',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
         const SizedBox(height: 24),
         RichText(
           textAlign: TextAlign.center,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import the intl package
 import 'package:mobile_uas/Notes/DetailNotes.dart';
 import 'package:mobile_uas/Notes/InsertNotes.dart';
+import 'package:mobile_uas/Notes/SearchPage.dart';
 import 'package:mobile_uas/widgets/CustomBottomNavBar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -142,6 +143,26 @@ class _NotesIndexState extends State<NotesIndex> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context, User user) {
     final theme = Theme.of(context);
+
+    // Get user's photo URL from Google or other providers
+    String? photoUrl = user.userMetadata?['avatar_url'] ??
+        user.userMetadata?['picture'];
+
+    String displayName = user.userMetadata?['name'] ??
+        user.userMetadata?['full_name'] ??
+        user.userMetadata?['username'] ??
+        user.email ??
+        'No name';
+
+    String getInitials(String name) {
+      if (name.isEmpty) return '??';
+      List<String> parts = name.trim().split(' ');
+      if (parts.length == 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+      }
+      return (parts[0][0] + parts.last[0]).toUpperCase();
+    }
+
     return AppBar(
       elevation: 0,
       backgroundColor: theme.colorScheme.background,
@@ -155,7 +176,10 @@ class _NotesIndexState extends State<NotesIndex> {
         IconButton(
           icon: Icon(Icons.search, color: theme.iconTheme.color, size: 28),
           onPressed: () {
-            /* TODO: Implement search */
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SearchPage()),
+            );
           },
         ),
         Padding(
@@ -163,13 +187,18 @@ class _NotesIndexState extends State<NotesIndex> {
           child: CircleAvatar(
             radius: 20,
             backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              _getInitials(user.email!).toUpperCase(),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
+            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                ? NetworkImage(photoUrl)
+                : null,
+            child: (photoUrl == null || photoUrl.isEmpty)
+                ? Text(
+                    getInitials(displayName),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  )
+                : null,
           ),
         ),
       ],

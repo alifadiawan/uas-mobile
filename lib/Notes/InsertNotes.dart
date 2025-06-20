@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_uas/Notes/NotesIndex.dart';
+import 'package:mobile_uas/Notes/NotesIndex.dart'; // This import might not be needed anymore
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InsertNotes extends StatefulWidget {
@@ -10,232 +10,220 @@ class InsertNotes extends StatefulWidget {
 }
 
 class _InsertNotesState extends State<InsertNotes> {
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  
+  final _supabase = Supabase.instance.client;
 
-  final supabase = Supabase.instance.client;
-
-  // List to hold categories fetched from Supabase
+  // State variables
   List<Map<String, dynamic>> _categories = [];
-  int? _selectedCategoryId; // to store selected category
+  int? _selectedCategoryId;
+  bool _isLoadingCategories = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCategories();
+    // Use a post-frame callback to safely show a SnackBar if loading fails
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCategories();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _notesController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCategories() async {
     try {
-      final data = await supabase.from('category').select();
-
-      // Check if widget is still mounted before updating state
-      if (!mounted) return;
-
-      setState(() {
-        _categories = List<Map<String, dynamic>>.from(data);
-      });
+      final data = await _supabase.from('category').select('id, nama_kategori');
+      if (mounted) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(data);
+          _isLoadingCategories = false;
+        });
+      }
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load categories: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load categories: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
     }
   }
 
-  Future<void> insertNote() async {
-    final user = supabase.auth.currentUser;
+  Future<void> _saveNote() async {
+    // 1. Validate the form, including the category dropdown
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
+    // Check for user session
+    final user = _supabase.auth.currentUser;
     if (user == null) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not logged in')),
       );
       return;
     }
 
-    if (_selectedCategoryId == null) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category')),
-      );
-      return;
-    }
+    // 2. Set loading state
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
-      await supabase.from('notes').insert({
+      // 3. Perform the insert
+      await _supabase.from('notes').insert({
         'user_id': user.id,
-        'title': _titleController.text,
-        'notes': _notesController.text,
+        'title': _titleController.text.trim(),
+        'notes': _notesController.text.trim(),
         'category_id': _selectedCategoryId,
       });
 
-      if (!mounted) return;
-
-      // Navigate back to NotesIndex and refresh it
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const NotesIndex()),
-      );
+      // 4. Show success and navigate back
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Note saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true); // Return 'true' to indicate success
+      }
     } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Insert failed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save note: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      // 5. Reset loading state
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text(
-          'Create Note',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
+        title: const Text('New Note'),
+        backgroundColor: theme.colorScheme.background,
         elevation: 0,
-        backgroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Title Card
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        border: InputBorder.none,
-                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      validator:
-                          (value) =>
-                              value!.isEmpty ? 'Title is required' : null,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Notes Card
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes',
-                        border: InputBorder.none,
-                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 7,
-                      validator:
-                          (value) =>
-                              value!.isEmpty ? 'Notes are required' : null,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Category Dropdown Card
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: DropdownButtonFormField<int>(
-                      decoration: const InputDecoration(
-                        labelText: 'Category',
-                        border: InputBorder.none,
-                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      value: _selectedCategoryId,
-                      items:
-                          _categories.map((category) {
-                            return DropdownMenuItem<int>(
-                              value: category['id'] as int,
-                              child: Text(category['nama_kategori'].toString()),
-                            );
-                          }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategoryId = value;
-                        });
-                      },
-                      icon: const Icon(Icons.arrow_drop_down_circle_outlined),
-                      isExpanded: true,
-                      validator:
-                          (value) =>
-                              value == null ? 'Please select a category' : null,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Submit Button
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      insertNote();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Save Note',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
+        actions: [
+          // --- Improved Save Button in AppBar ---
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: TextButton(
+              onPressed: _isSaving ? null : _saveNote,
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
             ),
           ),
-        ),
+        ],
       ),
+      body: _isLoadingCategories
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // --- Redesigned Title Field ---
+                      TextFormField(
+                        controller: _titleController,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'What is this note about?',
+                          prefixIcon: Icon(Icons.title_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty ? 'Title cannot be empty' : null,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // --- Redesigned Notes Field ---
+                      TextFormField(
+                        controller: _notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Notes',
+                          hintText: 'Write down your thoughts...',
+                          prefixIcon: Padding(
+                            padding: EdgeInsets.only(bottom: 120), // Adjust alignment
+                            child: Icon(Icons.article_outlined),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                          alignLabelWithHint: true,
+                        ),
+                        maxLines: 8,
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty ? 'Notes cannot be empty' : null,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // --- Redesigned Category Dropdown ---
+                      DropdownButtonFormField<int>(
+                        value: _selectedCategoryId,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          prefixIcon: Icon(Icons.folder_open_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                        items: _categories.map((category) {
+                          return DropdownMenuItem<int>(
+                            value: category['id'] as int,
+                            child: Text(category['nama_kategori'].toString()),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategoryId = value;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Please select a category' : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

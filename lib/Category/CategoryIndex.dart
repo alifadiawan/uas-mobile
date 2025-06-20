@@ -108,14 +108,115 @@ class _CategoryindexState extends State<Categoryindex> {
     }
   }
 
-  // Placeholder for edit function
-  void _editCategory(Map<String, dynamic> category) {
-    // TODO: Navigate to an edit screen, passing the category data
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Simulating edit for: ${category['nama_kategori']}'),
+  // --- Modal for editing category ---
+  Future<void> _showEditCategoryModal(Map<String, dynamic> category) async {
+    final _editController = TextEditingController(text: category['nama_kategori']);
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Edit Category',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _editController,
+                      decoration: const InputDecoration(
+                        labelText: 'Category Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                        prefixIcon: Icon(Icons.folder_outlined),
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty ? 'Category name cannot be empty' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) return;
+                                setModalState(() => isSaving = true);
+                                try {
+                                  await Supabase.instance.client
+                                      .from('category')
+                                      .update({'nama_kategori': _editController.text.trim()})
+                                      .eq('id', category['id']);
+                                  if (mounted) {
+                                    Navigator.of(context).pop(true);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Category updated successfully!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() => isSaving = false);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to update category: $e'),
+                                        backgroundColor: Theme.of(context).colorScheme.error,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Save Changes'),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
+    // Refresh after editing
+    _fetchCategories();
+  }
+
+  // Update the edit function to use the modal
+  void _editCategory(Map<String, dynamic> category) {
+    _showEditCategoryModal(category);
   }
 
   void _navigateAndRefresh() async {
